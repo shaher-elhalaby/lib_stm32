@@ -1,0 +1,80 @@
+name: lib_stm32
+version: 1.0.2
+user: global_repo
+channel: integration
+description: ''
+output_folder: conan_output
+default_config: build
+configurations:
+  build:
+    compiler: arm-none-eabi-gcc
+    dependencies: []
+    output_type: executable
+    inc_path:
+    - 02-SRC/Core/Inc/*.h
+    - 02-SRC/Drivers/CMSIS/Device/ST/STM32F1xx/Include/*.h
+    - 02-SRC/Drivers/CMSIS/Include/*.h
+    - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/*.h
+    - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy/*.h
+    - 02-SRC/*.h
+    src_path:
+    - 02-SRC/Core/Src/*.c
+    - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Src/*.c
+    - 02-SRC/*.c
+    asm_path:
+    - 02-SRC/01-BuildHelper/*.s
+    toolchain_file: arm-none-eabi.cmake
+    linker_script: 02-SRC/01-BuildHelper/STM32F103C8TX_FLASH.ld
+    use_nosys_specs: true
+    compiler_flags:
+    - -mcpu=cortex-m3
+    - -mfpu=fpv4-sp-d16
+    - -mfloat-abi=soft
+    - -mthumb
+    - -std=gnu11
+    - -g3
+    - -DUSE_HAL_DRIVER
+    - -DSTM32F103xB
+    - -DDEBUG
+    - -Wall
+    - -ffunction-sections
+    - -fdata-sections
+    - -fstack-usage
+    - --specs=nano.specs
+    linker_flags:
+    - -mcpu=cortex-m3
+    - -mfpu=fpv4-sp-d16
+    - -mfloat-abi=soft
+    - -mthumb
+    - --specs=nano.specs
+    - -Wl,-Map=${PROJECT_BINARY_DIR}/${PROJECT_NAME}.map
+  package:
+    output_type: source
+    dependencies: []
+    compiler: arm-none-eabi-gcc
+    inc_path:
+    - 02-SRC/Core/Inc/*.h
+    - 02-SRC/Drivers/CMSIS/Device/ST/STM32F1xx/Include/*.h
+    - 02-SRC/Drivers/CMSIS/Include/*.h
+    - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/*.h
+    - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy/*.h
+    - 02-SRC/*.h
+    src_path:
+    - 02-SRC/Core/Src/*.c
+    - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Src/*.c
+    toolchain_file: arm-none-eabi.cmake
+    compiler_flags:
+    - -mcpu=cortex-m3
+    - -mfpu=fpv4-sp-d16
+    - -mfloat-abi=soft
+    - -mthumb
+    - -std=gnu11
+    - -g3
+    - -DUSE_HAL_DRIVER
+    - -DSTM32F103xB
+    - -DDEBUG
+    - -Wall
+    - -ffunction-sections
+    - -fdata-sections
+    - -fstack-usage
+    - --specs=nano.specs

@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Cortex Debug (External)",
+            "name": "Debug with Markdown Watch",
             "cwd": "${workspaceFolder}",
             "executable": "${workspaceFolder}/conan_output/build/lib_stm32",
             "request": "launch",
@@ -10,15 +10,16 @@
             "runToEntryPoint": "main",
             "servertype": "external",
             "gdbTarget": "localhost:50000",
-            "preLaunchTask": "Start OpenOCD",
-            "gdbPath": "arm-none-eabi-gdb"
+            "preLaunchTask": "Markdown Watcher Task",
+            "gdbPath": "arm-none-eabi-gdb",
+            "showDevDebugOutput": "raw"
         }
     ],
     "compounds": [
         {
-            "name": "Debug + Live Watch",
-            "configurations": ["Cortex Debug (External)"],
-            "preLaunchTask": "Live Watch Task"
+            "name": "Full System Debug",
+            "configurations": ["Debug with Markdown Watch"],
+            "preLaunchTask": "Start OpenOCD"
         }
     ]
 }

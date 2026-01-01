@@ -3,110 +3,160 @@ import sys
 import subprocess
 import time
 import re
+import os
 
-# Configuration
+# --- Configuration ---
 OPENOCD_HOST = "127.0.0.1"
 OPENOCD_PORT = 50001
 ELF_FILE = r"conan_output/build/lib_stm32"
 NM_TOOL = "arm-none-eabi-nm"
+WATCH_MD = "LIVE_WATCH.md"
+WATCHLIST_FILE = "watchlist.txt"
 
-def get_var_address(var_name):
-    """Uses nm to find the address of a variable in the ELF file."""
-    try:
-        output = subprocess.check_output([NM_TOOL, ELF_FILE], stderr=subprocess.STDOUT).decode()
-        for line in output.splitlines():
-            line = line.strip()
-            match = re.search(r"([0-9a-fA-F]{8})\s+[a-zA-Z]\s+(\b" + re.escape(var_name) + r"\b)$", line)
-            if match:
-                return "0x" + match.group(1)
-    except Exception as e:
-        print(f"Error reading ELF symbols: {e}")
-    return None
+class MarkdownLiveWatch:
+    def __init__(self):
+        self.vars = []
+        self.last_mtime = 0
+        self.use_ocd_prefix = False
+        self.last_error = "None"
 
-def read_memory(address, size_cmd="mdh"):
-    """Connects to OpenOCD TCL port and reads memory."""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(1.0)
-            s.connect((OPENOCD_HOST, OPENOCD_PORT))
-            
-            # Try without ocd_ prefix first as it's more standard for newer versions
-            cmd = f"capture {{{size_cmd} {address} 1}}\n\x1a"
-            s.sendall(cmd.encode())
-            
-            data = b""
-            while True:
-                chunk = s.recv(1024)
-                if not chunk: break
-                data += chunk
-                if b"\x1a" in chunk:
-                    break
-            
-            result = data.decode().replace("\x1a", "").strip()
-            
-            # If we get an "invalid command" error, try with ocd_ prefix
-            if "invalid command" in result.lower():
-                s.close()
-                return read_memory_fallback(address, size_cmd)
+    def get_symbol_info(self, var_name):
+        try:
+            if not os.path.exists(ELF_FILE):
+                return None, None
+            # On Windows, we use shell=True to handle spaces in tool paths if any
+            cmd = f'"{NM_TOOL}" "{ELF_FILE}"'
+            output = subprocess.check_output(cmd, shell=True).decode()
+            for line in output.splitlines():
+                match = re.search(r"([0-9a-fA-F]+)\s+[a-zA-Z]\s+(\b" + re.escape(var_name) + r"\b)$", line.strip())
+                if match:
+                    addr = "0x" + match.group(1)
+                    size = "mdw"
+                    if var_name.startswith('u8') or var_name.startswith('b'): size = "mdb"
+                    if var_name.startswith('u16') or 'ADC' in var_name: size = "mdh"
+                    return addr, size
+        except Exception as e:
+            self.last_error = f"NM Error: {str(e)}"
+        return None, None
 
-            if ":" in result:
-                return result.split(":")[1].strip()
-            return result
-    except Exception as e:
-        return f"Error: {e}"
+    def refresh_watchlist(self):
+        if not os.path.exists(WATCHLIST_FILE):
+            with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
+                f.write("u16LiveCounter\nuwTick\nADC_u16Array[10]\n")
+        
+        try:
+            mtime = os.path.getmtime(WATCHLIST_FILE)
+            if mtime > self.last_mtime or not self.vars:
+                self.last_mtime = mtime
+                new_vars = []
+                with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
+                    for raw_line in f:
+                        # Be defensive: skip None lines and trim whitespace
+                        if raw_line is None:
+                            continue
+                        line = raw_line.strip()
+                        if not line or line.startswith("#"):
+                            continue
+                        # Match: name or name[count], e.g. ADC_u16Array[10]
+                        match = re.match(r'^\s*([^\[\]\s]+)\s*(?:\[(\d+)\])?\s*$', line)
+                        if not match:
+                            # Skip invalid entries without raising (keeps watcher robust)
+                            continue
+                        name = match.group(1).strip() if match.group(1) else None
+                        if not name:
+                            continue
+                        try:
+                            count = int(match.group(2)) if match.group(2) else 1
+                        except Exception:
+                            count = 1
+                        addr, size = self.get_symbol_info(name)
+                        if addr:
+                            new_vars.append({"name": name, "display": line, "addr": addr, "size": size, "count": count})
+                self.vars = new_vars
+        except Exception as e:
+            self.last_error = f"Watchlist Refresh Error: {str(e)}"
 
-def read_memory_fallback(address, size_cmd):
-    """Fallback with ocd_ prefix if needed."""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(1.0)
-            s.connect((OPENOCD_HOST, OPENOCD_PORT))
-            cmd = f"capture {{ocd_{size_cmd} {address} 1}}\n\x1a"
-            s.sendall(cmd.encode())
-            data = b""
-            while True:
-                chunk = s.recv(1024)
-                if not chunk: break
-                data += chunk
-                if b"\x1a" in chunk: break
-            result = data.decode().replace("\x1a", "").strip()
-            if ":" in result:
-                return result.split(":")[1].strip()
-            return result
-    except Exception as e:
-        return f"Error: {e}"
+    def read_memory(self, var):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.5)
+                s.connect((OPENOCD_HOST, OPENOCD_PORT))
+                
+                prefix = "ocd_" if self.use_ocd_prefix else ""
+                # Fixed newline and command termination (\n\x1a)
+                cmd = f"capture {{{prefix}{var['size']} {var['addr']} {var['count']}}}\n\x1a"
+                s.sendall(cmd.encode())
+                
+                data = b""
+                while True:
+                    chunk = s.recv(4096)
+                    if not chunk: break
+                    data += chunk
+                    if b"\x1a" in chunk: break
+                
+                raw = data.decode(errors='ignore').replace("\x1a", "").strip()
+                
+                if "invalid command" in raw.lower() and not self.use_ocd_prefix:
+                    self.use_ocd_prefix = True
+                    return self.read_memory(var)
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python live_watch.py <variable_name> [interval_ms] [size: w, h, b]")
-        sys.exit(1)
+                vals = []
+                for line in raw.splitlines():
+                    if ":" in line:
+                        parts = line.split(":")[1].strip().split()
+                        vals.extend(parts)
+                
+                if not vals:
+                    if raw: self.last_error = f"OpenOCD: {raw}"
+                    return ["???"] * var['count']
+                
+                self.last_error = "None"
+                return vals[:var['count']]
+        except Exception as e:
+            self.last_error = f"Socket Error: {str(e)}"
+            return ["???"] * var['count']
 
-    var_name = sys.argv[1]
-    interval = float(sys.argv[2]) / 1000.0 if len(sys.argv) > 2 else 0.5
-    size_opt = sys.argv[3] if len(sys.argv) > 3 else "h"
-    size_cmd = "mdw" if size_opt == "w" else "mdh" if size_opt == "h" else "mdb"
+    def update_markdown(self):
+        md = "# 🔴 STM32 Live Watch\n\n"
+        
+        if self.last_error != "None":
+            md += f"> ⚠️ **Status:** {self.last_error}\n\n"
+        else:
+            md += f"> ✅ **Status:** Connected and Monitoring {len(self.vars)} items\n\n"
 
-    print(f"Looking for variable '{var_name}' in {ELF_FILE}...")
-    addr = get_var_address(var_name)
-    
-    if not addr:
-        print(f"Could not find variable '{var_name}'")
-        sys.exit(1)
+        md += "| Variable | Hex | Decimal |\n"
+        md += "| :--- | :--- | :--- |\n"
+        
+        for v in self.vars:
+            vals = self.read_memory(v)
+            if v['count'] == 1:
+                h = vals[0] if vals else "???"
+                try: d = str(int(h, 16))
+                except: d = "---"
+                md += f"| **{v['name']}** | `{h}` | {d} |\n"
+            else:
+                md += f"| `{v['display']}` | | |\n"
+                for i, h in enumerate(vals):
+                    try: d = str(int(h, 16))
+                    except: d = "---"
+                    md += f"| &nbsp;&nbsp;&nbsp; `[{i}]` | `{h}` | {d} |\n"
+        
+        md += f"\n\n---\n*Last Update: {time.strftime('%H:%M:%S')}*  \n"
+        md += "Edit `watchlist.txt` to change variables."
+        
+        try:
+            with open(WATCH_MD, "w", encoding="utf-8") as f:
+                f.write(md)
+        except Exception as e:
+            print(f"Error writing markdown: {e}")
 
-    print(f"Monitoring '{var_name}' at {addr} (Ctrl+C to stop)")
-    print("-" * 40)
-
-    try:
+    def run(self):
+        print(f"--- Markdown Watcher Running ---")
+        print(f"--- Open {WATCH_MD} and click 'Open Preview to the Side' ---")
         while True:
-            val = read_memory(addr, size_cmd)
-            try:
-                dec_val = int(val, 16)
-                print(f"\r{var_name}: {val} ({dec_val})      ", end="")
-            except:
-                print(f"\r{var_name}: {val}      ", end="")
-            time.sleep(interval)
-    except KeyboardInterrupt:
-        print("\nStopped.")
+            self.refresh_watchlist()
+            self.update_markdown()
+            time.sleep(0.5)
 
 if __name__ == "__main__":
-    main()
+    MarkdownLiveWatch().run()

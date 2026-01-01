@@ -37,9 +37,9 @@
             }
         },
         {
-            "label": "Live Watch Task",
+            "label": "Markdown Watcher Task",
             "type": "shell",
-            "command": "python live_watch.py u16LiveCounter 500 h",
+            "command": "python live_watch.py",
             "isBackground": true,
             "problemMatcher": {
                 "owner": "python",
@@ -52,7 +52,7 @@
                 },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "Monitoring",
+                    "beginsPattern": "Markdown Watcher Running",
                     "endsPattern": "---"
                 }
             }

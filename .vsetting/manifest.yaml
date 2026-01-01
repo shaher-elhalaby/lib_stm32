@@ -22,9 +22,11 @@ configurations:
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Src/*.c
     - 02-SRC/*.c
     asm_path:
-    - 02-SRC/01-BuildHelper/*.s
+    - 02-SRC/01-BuildHelper/startup_stm32f103x6.s
+    # - 02-SRC/01-BuildHelper/startup_stm32f103c8tx.s
     toolchain_file: arm-none-eabi.cmake
-    linker_script: 02-SRC/01-BuildHelper/STM32F103C8TX_FLASH.ld
+    # linker_script: 02-SRC/01-BuildHelper/STM32F103C8TX_FLASH.ld
+    linker_script: 02-SRC/01-BuildHelper/STM32F103C6Tx_FLASH.ld
     use_nosys_specs: true
     compiler_flags:
     - -mcpu=cortex-m3
@@ -34,7 +36,8 @@ configurations:
     - -std=gnu11
     - -g3
     - -DUSE_HAL_DRIVER
-    - -DSTM32F103xB
+    # - -DSTM32F103xB
+    - -DSTM32F103x6
     - -DDEBUG
     - -Wall
     - -ffunction-sections
@@ -71,7 +74,8 @@ configurations:
     - -std=gnu11
     - -g3
     - -DUSE_HAL_DRIVER
-    - -DSTM32F103xB
+    # - -DSTM32F103xB
+    - -DSTM32F103x6
     - -DDEBUG
     - -Wall
     - -ffunction-sections

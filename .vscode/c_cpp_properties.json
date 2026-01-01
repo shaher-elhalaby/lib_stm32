@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/02-SRC/Core/Inc",
+                "${workspaceFolder}/02-SRC/Drivers/CMSIS/Device/ST/STM32F1xx/Include",
+                "${workspaceFolder}/02-SRC/Drivers/CMSIS/Include",
+                "${workspaceFolder}/02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc",
+                "${workspaceFolder}/02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy",
+                "${workspaceFolder}/02-SRC",
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32F103xB",
+                "DEBUG",
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "arm-none-eabi-gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "windows-gcc-arm"
+        }
+    ],
+    "version": 4
+}

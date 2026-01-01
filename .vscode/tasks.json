@@ -1,0 +1,61 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "ninja",
+            "args": [
+                "-C",
+                "${workspaceFolder}/conan_output/build"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Start OpenOCD",
+            "type": "shell",
+            "command": "${workspaceFolder}/start_openocd.bat",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "cpp",
+                "pattern": {
+                    "regexp": "^(.*?):(\\d+):(\\d+):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "message": 4
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Starting OpenOCD",
+                    "endsPattern": "Listening on port 50000"
+                }
+            }
+        },
+        {
+            "label": "Live Watch Task",
+            "type": "shell",
+            "command": "python live_watch.py u16LiveCounter 500 h",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "python",
+                "pattern": {
+                    "regexp": "^(.*?):(\\d+):(\\d+):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "message": 4
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Monitoring",
+                    "endsPattern": "---"
+                }
+            }
+        }
+    ]
+}

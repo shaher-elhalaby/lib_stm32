@@ -5,8 +5,8 @@ import os
 import yaml
 from pathlib import Path
 
-class My_projectConan(ConanFile):
-    name = "my_project"
+class Lib_stm32Conan(ConanFile):
+    name = "lib_stm32"
     version = "1.0.0"
 
     # Binary configuration
@@ -16,7 +16,7 @@ class My_projectConan(ConanFile):
     default_options = {"shared": False, "fPIC": True}
 
     # Export manifest and source directories
-    exports_sources = ".vsetting/manifest.yaml", ".vsetting/toolchains/*", "02-SRC/*"
+    exports_sources = ".vsetting/manifest.yaml", ".vsetting/toolchains/*", "02-SRC/*", "include/*"
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -60,7 +60,12 @@ class My_projectConan(ConanFile):
         # Gather sources based on glob-like patterns from manifest
         # In the cache, project_dir is the current directory
         sources = []
-        for pat in cfg.get('src_path', []):
+        
+        # Combine src_path and src_cfg_path for compilation (local build in cache)
+        # Note: cfg.get returns the lists from manifest.yaml directly
+        src_patterns = cfg.get('src_path', []) + cfg.get('src_cfg_path', [])
+        
+        for pat in src_patterns:
             # Convert glob to cmake format or just use file(GLOB)
             # We use ${{ }} to escape curly braces for Python f-string so they appear as {{ }} for CMake (if needed)
             # Actually, for CMake file(GLOB ...), we just need the path. 
@@ -75,7 +80,7 @@ class My_projectConan(ConanFile):
             lib_type = "STATIC" if out_type == 'static' else "SHARED"
             cmake.append(f"add_library({target_name} {lib_type} {' '.join(sources)})")
 
-        # Include paths
+        # Include paths (Standard)
         inc_dirs = []
         for pat in cfg.get('inc_path', []):
             # We assume patterns like 'include/**' or '02-SRC/**/*.h'
@@ -83,12 +88,23 @@ class My_projectConan(ConanFile):
             base = pat.split('/*')[0]
             if base not in inc_dirs:
                 inc_dirs.append(base)
+
+        # Config Include paths (Build only, not exported)
+        inc_cfg_dirs = []
+        for pat in cfg.get('inc_cfg_path', []):
+            base = pat.split('/*')[0]
+            if base not in inc_cfg_dirs and base not in inc_dirs:
+                inc_cfg_dirs.append(base)
         
-        if inc_dirs:
+        if inc_dirs or inc_cfg_dirs:
             cmake.append(f"target_include_directories({target_name} PUBLIC")
+            # Standard: Build and Install interfaces
             for d in inc_dirs:
                 cmake.append(f"    $<BUILD_INTERFACE:${{CMAKE_CURRENT_SOURCE_DIR}}/{d}>")
                 cmake.append(f"    $<INSTALL_INTERFACE:include>")
+            # Config: Build interface only
+            for d in inc_cfg_dirs:
+                cmake.append(f"    $<BUILD_INTERFACE:${{CMAKE_CURRENT_SOURCE_DIR}}/{d}>")
             cmake.append(")")
 
         # Compile options
@@ -114,9 +130,20 @@ class My_projectConan(ConanFile):
         cmake.append(f"install(TARGETS {target_name} EXPORT {target_name}Targets DESTINATION lib)")
         cmake.append(f"install(EXPORT {target_name}Targets DESTINATION lib/cmake/{target_name})")
         
-        # Install headers
+        # Install headers (only standard include paths)
         for d in inc_dirs:
              cmake.append(f'install(DIRECTORY ${{CMAKE_CURRENT_SOURCE_DIR}}/{d}/ DESTINATION include OPTIONAL FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")')
+             
+        # Install sources (only standard src paths) if output_type implies source distribution
+        # We iterate over unique base directories of src_path
+        src_dirs_to_install = []
+        for pat in cfg.get('src_path', []):
+             base = pat.split('/*')[0]
+             if base not in src_dirs_to_install:
+                 src_dirs_to_install.append(base)
+        
+        for d in src_dirs_to_install:
+             cmake.append(f'install(DIRECTORY ${{CMAKE_CURRENT_SOURCE_DIR}}/{d}/ DESTINATION src OPTIONAL FILES_MATCHING PATTERN "*.c" PATTERN "*.cpp" PATTERN "*.s" PATTERN "*.S")')
 
         return "\n".join(cmake)
 
@@ -184,5 +211,5 @@ class My_projectConan(ConanFile):
         copy(self, "CMakeLists.txt", self.source_folder, self.package_folder)
 
     def package_info(self):
-        target_name = "my_project".replace('-', '_')
+        target_name = "lib_stm32".replace('-', '_')
         self.cpp_info.libs = [target_name]

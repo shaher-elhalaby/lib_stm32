@@ -11,14 +11,16 @@ configurations:
     dependencies: []
     output_type: executable
     inc_path:
-    - 02-SRC/Core/Inc/*.h
     - 02-SRC/Drivers/CMSIS/Device/ST/STM32F1xx/Include/*.h
     - 02-SRC/Drivers/CMSIS/Include/*.h
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/*.h
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy/*.h
     src_path:
-    - 02-SRC/Core/Src/*.c
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Src/*.c
+    inc_cfg_path:
+    - 02-SRC/Core/Inc/*.h
+    src_cfg_path:
+    - 02-SRC/Core/Src/*.c          
     asm_path:
     - 02-SRC/01-BuildHelper/startup_stm32f103x6.s
     # - 02-SRC/01-BuildHelper/startup_stm32f103c8tx.s
@@ -60,6 +62,10 @@ configurations:
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy/*.h
     src_path:
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Src/*.c
+    inc_cfg_path:
+    - 02-SRC/Core/Inc/*.h
+    src_cfg_path:
+    - 02-SRC/Core/Src/*.c 
     toolchain_file: arm-none-eabi.cmake
     compiler_flags:
     - -mcpu=cortex-m3

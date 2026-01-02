@@ -1,3 +1,2 @@
 u16LiveCounter
 uwTick
-ADC_u16Array[10]

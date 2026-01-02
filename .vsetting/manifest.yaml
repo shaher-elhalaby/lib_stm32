@@ -1,5 +1,5 @@
 name: lib_stm32
-version: 1.0.2
+version: 1.1.0
 user: global_repo
 channel: integration
 description: ''
@@ -16,11 +16,9 @@ configurations:
     - 02-SRC/Drivers/CMSIS/Include/*.h
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/*.h
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy/*.h
-    - 02-SRC/*.h
     src_path:
     - 02-SRC/Core/Src/*.c
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Src/*.c
-    - 02-SRC/*.c
     asm_path:
     - 02-SRC/01-BuildHelper/startup_stm32f103x6.s
     # - 02-SRC/01-BuildHelper/startup_stm32f103c8tx.s
@@ -56,14 +54,11 @@ configurations:
     dependencies: []
     compiler: arm-none-eabi-gcc
     inc_path:
-    - 02-SRC/Core/Inc/*.h
     - 02-SRC/Drivers/CMSIS/Device/ST/STM32F1xx/Include/*.h
     - 02-SRC/Drivers/CMSIS/Include/*.h
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/*.h
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy/*.h
-    - 02-SRC/*.h
     src_path:
-    - 02-SRC/Core/Src/*.c
     - 02-SRC/Drivers/STM32F1xx_HAL_Driver/Src/*.c
     toolchain_file: arm-none-eabi.cmake
     compiler_flags:
